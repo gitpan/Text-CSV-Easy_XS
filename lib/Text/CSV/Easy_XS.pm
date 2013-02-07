@@ -3,7 +3,7 @@ use 5.010;
 use strict;
 use warnings FATAL => 'all';
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 require Exporter;
 
@@ -25,7 +25,7 @@ Text::CSV::Easy_XS - Easy CSV parsing and building
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =head1 SYNOPSIS
 
@@ -57,6 +57,10 @@ Takes a list of fields and will generate a csv string. This subroutine will rais
 =head2 csv_parse( Str $string ) : List[Str]
 
 Parses a CSV string. Returns a list of fields it found. This subroutine will raise an exception if a string could not be properly parsed.
+
+=head1 DISCLAIMER
+
+Note: this module is still in an *alpha* state. This has not been tested with threads. Use at your own risk.
 
 =head1 SEE ALSO
 
