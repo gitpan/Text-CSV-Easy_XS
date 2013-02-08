@@ -3,7 +3,7 @@ use 5.010;
 use strict;
 use warnings FATAL => 'all';
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 require Exporter;
 
@@ -25,7 +25,7 @@ Text::CSV::Easy_XS - Easy CSV parsing and building
 
 =head1 VERSION
 
-Version 0.02
+Version 0.03
 
 =head1 SYNOPSIS
 
@@ -48,6 +48,10 @@ If you need to use a literal quote ("), escape it with another quote:
 
     "one","some ""quoted"" string"
 
+There is also a difference between an empty string and an undefined value:
+
+    "",                 ( '', undef )
+
 =head1 SUBROUTINES
 
 =head2 csv_build( List @fields ) : Str
@@ -67,6 +71,10 @@ Note: this module is still in an *alpha* state. This has not been tested with th
 =over 4
 
 =item L<Text::CSV>
+
+=item L<Text::CSV::Easy>
+
+=item L<Text::CSV::Easy_PP>
 
 =back
 
