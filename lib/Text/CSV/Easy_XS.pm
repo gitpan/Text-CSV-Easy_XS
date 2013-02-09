@@ -3,12 +3,15 @@ use 5.010;
 use strict;
 use warnings FATAL => 'all';
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 require Exporter;
 
 our @ISA       = qw(Exporter);
 our @EXPORT_OK = qw(csv_build csv_parse);
+
+# version numbering to ensure PP and XS stay in sync.
+our $TCE_VERSION = 1;
 
 require XSLoader;
 XSLoader::load( 'Text::CSV::Easy_XS', $VERSION );
