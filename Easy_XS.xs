@@ -131,50 +131,79 @@ csv_parse(string)
         char *field = NULL; // tracks current field being parsed
 
         bool isutf8 = SvUTF8(string) != 0; // SvUTF8 doesn't typecast consistently to bool across various archs
-        bool numeric = NO;           // numbers don't require quotes
+        bool quoted = NO;            // is the field quoted?
         bool requires_unescape = NO; // did we encounter an escaped quote, e.g. some ""quote""
 
         for ( ptr = str; *ptr != '\0'; ptr++ ) {
             if ( field == NULL ) {
                 field = ptr;
 
-                if (isdigit(*ptr)) {
-                    numeric = YES;
-                }
-                else if (*ptr == '"') {
-                    numeric = NO;
+                quoted = NO;
+
+                // a quoted string: "one","two","three"
+                if (*ptr == '"') {
+                    quoted = YES;
                     requires_unescape = NO;
                     field++;
                     continue;
                 }
-                // support undef values
+                // an undef value: one,,three
                 else if (*ptr == ',') {
                     ST(st_pos++) = &PL_sv_undef;
                     field = NULL;
                     continue;
                 }
+                // an undef at the end with a trailing newline
+                else if (*ptr == '\n' && *(ptr+1) == '\0') {
+                    // undef is added later
+                    field = NULL;
+                    break;
+                }
+                // an unquoted string or number: one,2,3
                 else {
-                    croak("string is not quoted: %s", str);
+                    // do nothing
                 }
             }
 
-            if ( numeric ) {
-                if ( *ptr == ',' ) {
-                    ST(st_pos++) = sv_2mortal( newSVpvn( field, ptr - field ) );
-                    field = NULL;
-                }
-                else {
-                    if (!isdigit(*ptr)) croak("string is not quoted: %s\n", field);
+            if ( !quoted ) {
+                switch (*ptr) {
+                    case ',':
+                        ST(st_pos++) = sv_2mortal( newSVpvn( field, ptr - field ) );
+                        field = NULL;
+                        break;
+                    case '"':
+                        croak("quote found in middle of the field: %s\n", field);
+                        break;
+                    case '\n': {
+                        // allow an optional trailing newline
+                        if (*(ptr+1) == '\0') {
+                            // goto is evil, but in this case, use it to exit
+                            // a nested loop. I prefer a switch here, and I don't
+                            // want to add additional logic to the for conditional.
+                            // I feel guilty if that makes you feel any better.
+                            goto outsidefor;
+                        }
+                        else {
+                            croak("newline found in unquoted string: %s\n", field);
+                        }
+
+                        break;
+                    }
                 }
             }
             else {
                 if ( *ptr == '"' ) {
+                    // see if the quote is part of an escaped quote
                     if ( *(ptr + 1) == '"' ) {
                         requires_unescape = YES;
-                        ptr++;
+                        ptr++; // increment to get past the escaped quote
                         continue;
                     }
-                    else if ( *(ptr + 1) == ',' || *(ptr + 1) == '\0' ) {
+                    // reached the end of the field
+                    else if ( *(ptr + 1) == ','
+                           || *(ptr + 1) == '\0'
+                           || ( *(ptr + 1) == '\n' && *(ptr + 2) == '\0' )
+                    ) {
                         if (!requires_unescape) {
                             // no additional processing required. just create a string.
                             SV *tmp = sv_2mortal( newSVpvn( field, ptr - field ) );
@@ -205,17 +234,30 @@ csv_parse(string)
                             Safefree(tmp);
                         }
 
-                        if (*(ptr+1) == ',') ptr++;
                         field = NULL;
+
+                        // allow trailing newline.
+                        if (*(ptr+1) == '\n') break;
+
+                        // move the pointer ahead so we don't process the comma
+                        if (*(ptr+1) == ',') ptr++;
                     }
                     else {
-                        croak("invalid field: %s\n", field);
+                        // put the quote back to make it easier to for the user.
+                        croak("invalid field: \"%s\n", field);
                     }
                 }
             }
         }
 
-        if (numeric) {
+    // No I don't, deal with it!
+    // This label should only be used to break out of the switch inside the for
+    // loop.
+    outsidefor: 
+
+        // if we hit the end of the string, the last field will not have been
+        // added if it's a non-quoted string.
+        if (field != NULL && !quoted) {
             ST(st_pos++) = sv_2mortal( newSVpvn( field, ptr - field ) );
         }
         // if field is not NULL, it means the string never terminated.
